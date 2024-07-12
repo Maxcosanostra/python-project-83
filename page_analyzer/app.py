@@ -1,4 +1,4 @@
-kimport os
+import os
 import logging
 import psycopg2
 from flask import Flask, render_template, request, redirect, url_for, flash
