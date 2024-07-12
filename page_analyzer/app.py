@@ -12,9 +12,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 DATABASE_URL = os.getenv('DATABASE_URL')
 
-
 conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
-
 
 @app.route('/')
 def index():
@@ -25,15 +23,13 @@ def list_urls():
     if request.method == 'POST':
         url = request.form['url']
         parsed_url = urlparse(url)
-        if not validators.url(url) or not parsed_url.scheme or not 
-parsed_url.netloc:
+        if not validators.url(url) or not parsed_url.scheme or not parsed_url.netloc:
             flash('Некорректный URL!', 'danger')
             return redirect(url_for('index'))
 
         cursor = conn.cursor()
         try:
-            cursor.execute("INSERT INTO urls (name) VALUES (%s) RETURNING id;", 
-(url,))
+            cursor.execute("INSERT INTO urls (name) VALUES (%s) RETURNING id;", (url,))
             conn.commit()
             flash('URL успешно добавлен!', 'success')
         except psycopg2.IntegrityError:
