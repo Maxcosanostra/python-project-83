@@ -35,7 +35,8 @@
                 <tr>
                     <th>ID</th>
                     <th>Имя</th>
-                    <th>Дата создания</th>
+                    <th>Последняя проверка</th>
+                    <th>Код ответа</th>
                 </tr>
             </thead>
             <tbody>
@@ -43,7 +44,8 @@
                     <tr>
                         <td>{{ url.id }}</td>
                         <td><a href="{{ url_for('view_url', id=url.id) }}">{{ url.name }}</a></td>
-                        <td>{{ url.created_at }}</td>
+                        <td>{{ url.last_check_date }}</td>
+                        <td>{{ url.status_code }}</td>
                     </tr>
                 {% endfor %}
             </tbody>
