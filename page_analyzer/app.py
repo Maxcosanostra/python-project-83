@@ -15,11 +15,13 @@ DATABASE_URL = os.getenv('DATABASE_URL')
 
 logging.basicConfig(level=logging.INFO)
 
-try:
-    conn = psycopg2.connect(DATABASE_URL, sslmode='require', cursor_factory=RealDictCursor)
-except Exception as e:
-    logging.error(f"Ошибка подключения к базе данных: {e}")
-    raise e
+def get_db_connection():
+    try:
+        conn = psycopg2.connect(DATABASE_URL, sslmode='prefer', cursor_factory=RealDictCursor)
+        return conn
+    except Exception as e:
+        logging.error(f"Ошибка подключения к базе данных: {e}")
+        raise e
 
 @app.route('/')
 def index():
@@ -27,6 +29,7 @@ def index():
 
 @app.route('/list_urls', methods=['GET', 'POST'])
 def list_urls():
+    conn = get_db_connection()
     if request.method == 'POST':
         url = request.form['url']
         logging.debug(f"Received URL: {url}")
@@ -53,14 +56,18 @@ def list_urls():
     cursor.execute("SELECT * FROM urls ORDER BY created_at DESC;")
     urls = cursor.fetchall()
     cursor.close()
+    conn.close()
     logging.debug(f"Fetched URLs: {urls}")
     return render_template('list_urls.html', urls=urls)
 
 @app.route('/view_url/<int:id>')
 def view_url(id):
+    conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM urls WHERE id = %s;", (id,))
     url = cursor.fetchone()
+    cursor.close()
+    conn.close()
     if url is None:
         flash('URL не найден!', 'danger')
         return redirect(url_for('list_urls'))
