@@ -13,11 +13,10 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 DATABASE_URL = os.getenv('DATABASE_URL')
 
-# Настройка логирования
 logging.basicConfig(level=logging.INFO)
 
 try:
-    conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+    conn = psycopg2.connect(DATABASE_URL, sslmode='require', cursor_factory=RealDictCursor)
 except Exception as e:
     logging.error(f"Ошибка подключения к базе данных: {e}")
     raise e
@@ -30,8 +29,10 @@ def index():
 def list_urls():
     if request.method == 'POST':
         url = request.form['url']
+        logging.debug(f"Received URL: {url}")
         parsed_url = urlparse(url)
         if not validators.url(url) or not parsed_url.scheme or not parsed_url.netloc:
+            logging.debug("URL validation failed")
             flash('Некорректный URL!', 'danger')
             return redirect(url_for('index'))
 
@@ -43,11 +44,16 @@ def list_urls():
         except psycopg2.IntegrityError:
             conn.rollback()
             flash('URL уже существует!', 'danger')
+        finally:
+            cursor.close()
+        logging.debug("Redirecting to list_urls")
         return redirect(url_for('list_urls'))
 
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM urls ORDER BY created_at DESC;")
     urls = cursor.fetchall()
+    cursor.close()
+    logging.debug(f"Fetched URLs: {urls}")
     return render_template('list_urls.html', urls=urls)
 
 @app.route('/view_url/<int:id>')
