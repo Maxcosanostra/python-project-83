@@ -40,15 +40,18 @@ def list_urls():
         cursor = conn.cursor()
         try:
             cursor.execute("INSERT INTO urls (name) VALUES (%s) RETURNING id;", (url,))
+            url_id = cursor.fetchone()['id']
             conn.commit()
             flash('URL успешно добавлен!', 'success')
+            return redirect(url_for('view_url', id=url_id))
         except psycopg2.IntegrityError:
             conn.rollback()
             flash('URL уже существует!', 'danger')
+            cursor.execute("SELECT id FROM urls WHERE name = %s;", (url,))
+            url_id = cursor.fetchone()['id']  # Получение ID существующего URL
         finally:
             cursor.close()
         return redirect(url_for('view_url', id=url_id))
-
     cursor = conn.cursor()
     cursor.execute("""
         SELECT urls.id, urls.name, MAX(url_checks.created_at) AS last_check_date, url_checks.status_code
