@@ -1,4 +1,5 @@
 import os
+import requests
 import psycopg2
 from flask import Flask, render_template, request, redirect, url_for, flash
 from dotenv import load_dotenv
@@ -71,7 +72,25 @@ def list_urls():
 def check_url(id):
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO url_checks (url_id, created_at) VALUES (%s, CURRENT_TIMESTAMP) RETURNING id;", (id,))
+    def check_url(id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT name FROM urls WHERE id = %s;", (id,))
+    url = cursor.fetchone()
+    
+    if url is None:
+        flash('URL не найден!', 'danger')
+        return redirect(url_for('list_urls'))
+
+    try:
+        response = requests.get(url['name'])
+        response.raise_for_status()
+        status_code = response.status_code
+    except requests.RequestException:
+        flash('Произошла ошибка при проверке', 'danger')
+        return redirect(url_for('view_url', id=id))
+
+    cursor.execute("INSERT INTO url_checks (url_id, status code  created_at) VALUES (%s, %s, CURRENT_TIMESTAMP) RETURNING id;", (id, status_code))
     conn.commit()
     cursor.close()
     conn.close()
@@ -82,9 +101,9 @@ def check_url(id):
 def view_url(id):
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM urls WHERE id = %s;", (id,))
+    cursor.execute("SELECT id, name, TO_CHAR(created_at, 'YYYY-MM-DD') as created_at FROM urls WHERE id = %s;", (id,))
     url = cursor.fetchone()
-    cursor.execute("SELECT * FROM url_checks WHERE url_id = %s ORDER BY created_at DESC;", (id,))
+    cursor.execute("SELECT id, status_code, h1, title, description, TO_CHAR(created_at, 'YYYY-MM-DD') as created_at FROM url_checks WHERE url_id = %s ORDER BY created_at DESC;", (id,))
     checks = cursor.fetchall()
     cursor.close()
     conn.close()
