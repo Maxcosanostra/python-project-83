@@ -100,8 +100,7 @@ def view_url(id):
     cursor = conn.cursor()
     cursor.execute("SELECT id, name, TO_CHAR(created_at, 'YYYY-MM-DD') as created_at FROM urls WHERE id = %s;", (id,))
     url = cursor.fetchone()
-    cursor.execute("SELECT id, status_code, h1, title, description, TO_CHAR(created_at, 'YYYY-MM-DD') as created_at FROM url_checks WHERE url_id = %s ORDER BY created_at DESC;", 
-(id,))
+    cursor.execute("SELECT id, status_code, h1, title, description, TO_CHAR(created_at, 'YYYY-MM-DD') as created_at FROM url_checks WHERE url_id = %s ORDER BY created_at DESC;", (id,))
     checks = cursor.fetchall()
     cursor.close()
     conn.close()
