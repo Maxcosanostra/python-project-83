@@ -1,6 +1,7 @@
 import os
 import requests
 import psycopg2
+import logging
 from flask import Flask, render_template, request, redirect, url_for, flash
 from dotenv import load_dotenv
 from psycopg2.extras import RealDictCursor
@@ -13,11 +14,14 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 DATABASE_URL = os.getenv('DATABASE_URL')
 
+logging.basicConfig(level=logging.DEBUG)
+
 def get_db_connection():
     try:
         conn = psycopg2.connect(DATABASE_URL, sslmode='prefer', cursor_factory=RealDictCursor)
         return conn
     except Exception as e:
+        logging.error(f"Ошибка подключения к базе данных: {e}")
         raise e
 
 @app.route('/')
@@ -44,7 +48,8 @@ def list_urls():
             url_id = cursor.fetchone()['id']
             conn.commit()
             flash('Страница успешно добавлена', 'success')
-        except psycopg2.IntegrityError:
+        except psycopg2.IntegrityError as e:
+            logging.error(f"Ошибка целостности базы данных: {e}")
             conn.rollback()
             cursor.execute("SELECT id FROM urls WHERE name = %s;", (url,))
             url_id = cursor.fetchone()['id']
@@ -83,7 +88,8 @@ def check_url(id):
         response = requests.get(url['name'])
         response.raise_for_status()
         status_code = response.status_code
-    except requests.RequestException:
+    except requests.RequestException as e:
+        logging.error(f"Ошибка запроса: {e}")
         flash('Произошла ошибка при проверке', 'danger')
         return redirect(url_for('view_url', id=id))
 
@@ -100,7 +106,8 @@ def view_url(id):
     cursor = conn.cursor()
     cursor.execute("SELECT id, name, TO_CHAR(created_at, 'YYYY-MM-DD') as created_at FROM urls WHERE id = %s;", (id,))
     url = cursor.fetchone()
-    cursor.execute("SELECT id, status_code, h1, title, description, TO_CHAR(created_at, 'YYYY-MM-DD') as created_at FROM url_checks WHERE url_id = %s ORDER BY created_at DESC;", (id,))
+    cursor.execute("SELECT id, status_code, h1, title, description, TO_CHAR(created_at, 'YYYY-MM-DD') as created_at FROM url_checks WHERE url_id = %s ORDER BY created_at DESC;", 
+(id,))
     checks = cursor.fetchall()
     cursor.close()
     conn.close()
@@ -111,12 +118,13 @@ def view_url(id):
 
 @app.errorhandler(500)
 def internal_error(error):
+    logging.error(f"Internal Server Error: {error}")
     return "Internal Server Error", 500
 
 @app.errorhandler(Exception)
 def unhandled_exception(e):
+    logging.error(f"Unhandled Exception: {e}")
     return "Internal Server Error", 500
 
 if __name__ == '__main__':
     app.run()
-
