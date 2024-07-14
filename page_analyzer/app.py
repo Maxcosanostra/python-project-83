@@ -14,6 +14,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 DATABASE_URL = os.getenv('DATABASE_URL')
 
+# Инициализация логирования
 logging.basicConfig(level=logging.DEBUG)
 
 def get_db_connection():
@@ -104,10 +105,13 @@ def check_url(id):
 def view_url(id):
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, name, TO_CHAR(created_at, 'YYYY-MM-DD') as created_at FROM urls WHERE id = %s;", (id,))
+    cursor.execute("SELECT id, name, created_at FROM urls WHERE id = %s;", (id,))
     url = cursor.fetchone()
-    cursor.execute("SELECT id, status_code, h1, title, description, TO_CHAR(created_at, 'YYYY-MM-DD') as created_at FROM url_checks WHERE url_id = %s ORDER BY created_at DESC;", 
-(id,))
+
+    # Преобразование даты создания в объект datetime
+    url['created_at'] = url['created_at'].strftime('%Y-%m-%d') if isinstance(url['created_at'], datetime) else url['created_at']
+
+    cursor.execute("SELECT id, status_code, h1, title, description, TO_CHAR(created_at, 'YYYY-MM-DD') as created_at FROM url_checks WHERE url_id = %s ORDER BY created_at DESC;", (id,))
     checks = cursor.fetchall()
     cursor.close()
     conn.close()
