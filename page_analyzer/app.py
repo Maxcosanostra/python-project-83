@@ -47,7 +47,7 @@ def list_urls():
             flash('URL уже существует!', 'danger')
         finally:
             cursor.close()
-        return redirect(url_for('list_urls'))
+        return redirect(url_for('view_url', id=url_id))
 
     cursor = conn.cursor()
     cursor.execute("""
