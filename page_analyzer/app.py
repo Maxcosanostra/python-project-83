@@ -72,9 +72,6 @@ def list_urls():
 def check_url(id):
     conn = get_db_connection()
     cursor = conn.cursor()
-    def check_url(id):
-    conn = get_db_connection()
-    cursor = conn.cursor()
     cursor.execute("SELECT name FROM urls WHERE id = %s;", (id,))
     url = cursor.fetchone()
     
@@ -90,7 +87,7 @@ def check_url(id):
         flash('Произошла ошибка при проверке', 'danger')
         return redirect(url_for('view_url', id=id))
 
-    cursor.execute("INSERT INTO url_checks (url_id, status code  created_at) VALUES (%s, %s, CURRENT_TIMESTAMP) RETURNING id;", (id, status_code))
+    cursor.execute("INSERT INTO url_checks (url_id, status_code, created_at) VALUES (%s, %s, CURRENT_TIMESTAMP) RETURNING id;", (id, status_code))
     conn.commit()
     cursor.close()
     conn.close()
@@ -103,7 +100,8 @@ def view_url(id):
     cursor = conn.cursor()
     cursor.execute("SELECT id, name, TO_CHAR(created_at, 'YYYY-MM-DD') as created_at FROM urls WHERE id = %s;", (id,))
     url = cursor.fetchone()
-    cursor.execute("SELECT id, status_code, h1, title, description, TO_CHAR(created_at, 'YYYY-MM-DD') as created_at FROM url_checks WHERE url_id = %s ORDER BY created_at DESC;", (id,))
+    cursor.execute("SELECT id, status_code, h1, title, description, TO_CHAR(created_at, 'YYYY-MM-DD') as created_at FROM url_checks WHERE url_id = %s ORDER BY created_at DESC;", 
+(id,))
     checks = cursor.fetchall()
     cursor.close()
     conn.close()
@@ -122,3 +120,4 @@ def unhandled_exception(e):
 
 if __name__ == '__main__':
     app.run()
+
