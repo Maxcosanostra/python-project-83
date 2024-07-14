@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from psycopg2.extras import RealDictCursor
 from urllib.parse import urlparse
 import validators
+from datetime import datetime  # Импорт модуля datetime
 
 load_dotenv()
 
@@ -109,7 +110,11 @@ def view_url(id):
     url = cursor.fetchone()
 
     # Преобразование даты создания в объект datetime
-    url['created_at'] = url['created_at'].strftime('%Y-%m-%d') if isinstance(url['created_at'], datetime) else url['created_at']
+    if 'created_at' in url and isinstance(url['created_at'], str):
+        try:
+            url['created_at'] = datetime.strptime(url['created_at'], '%Y-%m-%d %H:%M:%S.%f').date().strftime('%Y-%m-%d')
+        except ValueError:
+            url['created_at'] = url['created_at'].split(' ')[0]  # Если формат не совпадает, берем только дату
 
     cursor.execute("SELECT id, status_code, h1, title, description, TO_CHAR(created_at, 'YYYY-MM-DD') as created_at FROM url_checks WHERE url_id = %s ORDER BY created_at DESC;", (id,))
     checks = cursor.fetchall()
@@ -132,3 +137,4 @@ def unhandled_exception(e):
 
 if __name__ == '__main__':
     app.run()
+
