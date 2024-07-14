@@ -110,13 +110,17 @@ def view_url(id):
     url = cursor.fetchone()
 
     # Преобразование даты создания в объект datetime, если это необходимо
-    if 'created_at' in url and isinstance(url['created_at'], str):
+    if 'created_at' in url:
         try:
             url['created_at'] = datetime.strptime(url['created_at'], '%Y-%m-%d %H:%M:%S.%f').strftime('%Y-%m-%d')
         except ValueError:
-            url['created_at'] = url['created_at'].split(' ')[0]  # Если формат не совпадает, берем только дату
+            try:
+                url['created_at'] = datetime.strptime(url['created_at'], '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d')
+            except ValueError:
+                url['created_at'] = url['created_at'].split(' ')[0]  # Если формат не совпадает, берем только дату
 
-    cursor.execute("SELECT id, status_code, h1, title, description, TO_CHAR(created_at, 'YYYY-MM-DD') as created_at FROM url_checks WHERE url_id = %s ORDER BY created_at DESC;", (id,))
+    cursor.execute("SELECT id, status_code, h1, title, description, TO_CHAR(created_at, 'YYYY-MM-DD') as created_at FROM url_checks WHERE url_id = %s ORDER BY created_at DESC;", 
+(id,))
     checks = cursor.fetchall()
     cursor.close()
     conn.close()
