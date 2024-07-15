@@ -42,7 +42,7 @@ def list_urls():
             cursor.execute("INSERT INTO urls (name) VALUES (%s) RETURNING id;", (url,))
             url_id = cursor.fetchone()['id']
             conn.commit()
-            flash('URL успешно добавлен!', 'success')
+            flash('Страница успешно добавлена!', 'success')
         except psycopg2.IntegrityError:
             conn.rollback()
             cursor.execute("SELECT id FROM urls WHERE name = %s;", (url,))
