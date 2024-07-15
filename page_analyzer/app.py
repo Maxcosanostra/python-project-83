@@ -1,13 +1,10 @@
 import os
-import requests
 import psycopg2
-import logging
 from flask import Flask, render_template, request, redirect, url_for, flash
 from dotenv import load_dotenv
 from psycopg2.extras import RealDictCursor
 from urllib.parse import urlparse
 import validators
-from datetime import datetime
 
 load_dotenv()
 
@@ -15,15 +12,11 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 DATABASE_URL = os.getenv('DATABASE_URL')
 
-# Инициализация логирования
-logging.basicConfig(level=logging.DEBUG)
-
 def get_db_connection():
     try:
         conn = psycopg2.connect(DATABASE_URL, sslmode='prefer', cursor_factory=RealDictCursor)
         return conn
     except Exception as e:
-        logging.error(f"Ошибка подключения к базе данных: {e}")
         raise e
 
 @app.route('/')
@@ -49,9 +42,8 @@ def list_urls():
             cursor.execute("INSERT INTO urls (name) VALUES (%s) RETURNING id;", (url,))
             url_id = cursor.fetchone()['id']
             conn.commit()
-            flash('Страница успешно добавлена', 'success')
-        except psycopg2.IntegrityError as e:
-            logging.error(f"Ошибка целостности базы данных: {e}")
+            flash('URL успешно добавлен!', 'success')
+        except psycopg2.IntegrityError:
             conn.rollback()
             cursor.execute("SELECT id FROM urls WHERE name = %s;", (url,))
             url_id = cursor.fetchone()['id']
@@ -79,23 +71,7 @@ def list_urls():
 def check_url(id):
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT name FROM urls WHERE id = %s;", (id,))
-    url = cursor.fetchone()
-    
-    if url is None:
-        flash('URL не найден!', 'danger')
-        return redirect(url_for('list_urls'))
-
-    try:
-        response = requests.get(url['name'])
-        response.raise_for_status()
-        status_code = response.status_code
-    except requests.RequestException as e:
-        logging.error(f"Ошибка запроса: {e}")
-        flash('Произошла ошибка при проверке', 'danger')
-        return redirect(url_for('view_url', id=id))
-
-    cursor.execute("INSERT INTO url_checks (url_id, status_code, created_at) VALUES (%s, %s, CURRENT_TIMESTAMP) RETURNING id;", (id, status_code))
+    cursor.execute("INSERT INTO url_checks (url_id, created_at) VALUES (%s, CURRENT_TIMESTAMP) RETURNING id;", (id,))
     conn.commit()
     cursor.close()
     conn.close()
@@ -106,21 +82,9 @@ def check_url(id):
 def view_url(id):
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, name, created_at FROM urls WHERE id = %s;", (id,))
+    cursor.execute("SELECT * FROM urls WHERE id = %s;", (id,))
     url = cursor.fetchone()
-
-    # Преобразование даты создания в объект datetime, если это необходимо
-    if 'created_at' in url:
-        try:
-            url['created_at'] = datetime.strptime(url['created_at'], '%Y-%m-%d %H:%M:%S.%f').strftime('%Y-%m-%d')
-        except ValueError:
-            try:
-                url['created_at'] = datetime.strptime(url['created_at'], '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d')
-            except ValueError:
-                url['created_at'] = url['created_at'].split(' ')[0]  # Если формат не совпадает, берем только дату
-
-    cursor.execute("SELECT id, status_code, h1, title, description, TO_CHAR(created_at, 'YYYY-MM-DD') as created_at FROM url_checks WHERE url_id = %s ORDER BY created_at DESC;", 
-(id,))
+    cursor.execute("SELECT * FROM url_checks WHERE url_id = %s ORDER BY created_at DESC;", (id,))
     checks = cursor.fetchall()
     cursor.close()
     conn.close()
@@ -131,12 +95,10 @@ def view_url(id):
 
 @app.errorhandler(500)
 def internal_error(error):
-    logging.error(f"Internal Server Error: {error}")
     return "Internal Server Error", 500
 
 @app.errorhandler(Exception)
 def unhandled_exception(e):
-    logging.error(f"Unhandled Exception: {e}")
     return "Internal Server Error", 500
 
 if __name__ == '__main__':
