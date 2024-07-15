@@ -1,4 +1,5 @@
 import os
+import requests
 import psycopg2
 from flask import Flask, render_template, request, redirect, url_for, flash
 from dotenv import load_dotenv
@@ -42,7 +43,7 @@ def list_urls():
             cursor.execute("INSERT INTO urls (name) VALUES (%s) RETURNING id;", (url,))
             url_id = cursor.fetchone()['id']
             conn.commit()
-            flash('Страница успешно добавлена!', 'success')
+            flash('URL успешно добавлен!', 'success')
         except psycopg2.IntegrityError:
             conn.rollback()
             cursor.execute("SELECT id FROM urls WHERE name = %s;", (url,))
@@ -71,7 +72,22 @@ def list_urls():
 def check_url(id):
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO url_checks (url_id, created_at) VALUES (%s, CURRENT_DATE) RETURNING id;", (id,))
+    cursor.execute("SELECT name FROM urls WHERE id = %s;", (id,))
+    url = cursor.fetchone()
+    
+    if url is None:
+        flash('URL не найден!', 'danger')
+        return redirect(url_for('list_urls'))
+
+    try:
+        response = requests.get(url['name'])
+        response.raise_for_status()
+        status_code = response.status_code
+    except requests.RequestException as e:
+        flash('Произошла ошибка при проверке', 'danger')
+        return redirect(url_for('view_url', id=id))
+
+    cursor.execute("INSERT INTO url_checks (url_id, status_code, created_at) VALUES (%s, %s, CURRENT_DATE) RETURNING id;", (id, status_code))
     conn.commit()
     cursor.close()
     conn.close()
