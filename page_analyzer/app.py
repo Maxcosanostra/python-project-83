@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from psycopg2.extras import RealDictCursor
 from urllib.parse import urlparse
 import validators
+from bs4 import BeautifulSoup
 
 load_dotenv()
 
@@ -83,11 +84,22 @@ def check_url(id):
         response = requests.get(url['name'])
         response.raise_for_status()
         status_code = response.status_code
-    except requests.RequestException as e:
+
+        soup = BeautifulSoup(response.text, 'html.parser')
+        h1 = soup.find('h1').text if soup.find('h1') else None
+        title = soup.title.string if soup.title else None
+        description = None
+        if soup.find('meta', attrs={'name': 'description'}):
+            description = soup.find('meta', attrs={'name': 'description'})['content']
+
+    except requests.RequestException:
         flash('Произошла ошибка при проверке', 'danger')
         return redirect(url_for('view_url', id=id))
 
-    cursor.execute("INSERT INTO url_checks (url_id, status_code, created_at) VALUES (%s, %s, CURRENT_DATE) RETURNING id;", (id, status_code))
+    cursor.execute("""
+        INSERT INTO url_checks (url_id, status_code, h1, title, description, created_at)
+        VALUES (%s, %s, %s, %s, %s, CURRENT_DATE) RETURNING id;
+    """, (id, status_code, h1, title, description))
     conn.commit()
     cursor.close()
     conn.close()
