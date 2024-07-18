@@ -14,7 +14,6 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 DATABASE_URL = os.getenv('DATABASE_URL')
 
-
 def get_db_connection():
     try:
         conn = psycopg2.connect(
@@ -24,17 +23,16 @@ def get_db_connection():
     except Exception as e:
         raise e
 
-
 @app.route('/')
 def index():
     return render_template('index.html')
-
 
 @app.route('/list_urls', methods=['GET', 'POST'])
 def list_urls():
     conn = get_db_connection()
     if request.method == 'POST':
         url = request.form['url']
+        
         if not validators.url(url):
             flash('Некорректный URL!', 'danger')
             return redirect(url_for('index'))
@@ -78,7 +76,6 @@ def list_urls():
     cursor.close()
     conn.close()
     return render_template('list_urls.html', urls=urls)
-
 
 @app.route('/urls/<int:id>/checks', methods=['POST'])
 def check_url(id):
@@ -124,7 +121,6 @@ def check_url(id):
     flash('Проверка успешно запущена!', 'success')
     return redirect(url_for('view_url', id=id))
 
-
 @app.route('/view_url/<int:id>')
 def view_url(id):
     conn = get_db_connection()
@@ -155,16 +151,13 @@ def view_url(id):
         return redirect(url_for('list_urls'))
     return render_template('view_url.html', url=url, checks=checks)
 
-
 @app.errorhandler(500)
 def internal_error(error):
     return "Internal Server Error", 500
 
-
 @app.errorhandler(Exception)
 def unhandled_exception(e):
     return "Internal Server Error", 500
-
 
 if __name__ == '__main__':
     app.run()
