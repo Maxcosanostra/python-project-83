@@ -7,6 +7,7 @@ from psycopg2.extras import RealDictCursor
 from urllib.parse import urlparse
 import validators
 from bs4 import BeautifulSoup
+from datetime import datetime
 
 load_dotenv()
 
@@ -23,6 +24,13 @@ def get_db_connection():
         return conn
     except Exception as e:
         raise e
+
+
+@app.template_filter('datetime')
+def datetime_filter(value):
+    if isinstance(value, datetime):
+        return value.strftime('%Y-%m-%d %H:%M:%S')
+    return value
 
 
 @app.route('/')
@@ -65,8 +73,7 @@ def list_urls():
     cursor.execute(
         """
         SELECT urls.id, urls.name,
-               TO_CHAR(MAX(url_checks.created_at), 'YYYY-MM-DD')
-               AS last_check_date,
+               MAX(url_checks.created_at) AS last_check_date,
                url_checks.status_code
         FROM urls
         LEFT JOIN url_checks ON urls.id = url_checks.url_id
@@ -131,7 +138,7 @@ def view_url(id):
     cursor = conn.cursor()
     cursor.execute(
         """
-        SELECT id, name, TO_CHAR(created_at, 'YYYY-MM-DD') AS created_at
+        SELECT id, name, created_at
         FROM urls WHERE id = %s;
         """,
         (id,)
@@ -140,7 +147,7 @@ def view_url(id):
     cursor.execute(
         """
         SELECT id, status_code, h1, title, description,
-               TO_CHAR(created_at, 'YYYY-MM-DD') AS created_at
+               created_at
         FROM url_checks
         WHERE url_id = %s
         ORDER BY created_at DESC;
