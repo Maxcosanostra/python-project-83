@@ -3,27 +3,17 @@ import requests
 import psycopg2
 from flask import Flask, render_template, request, redirect, url_for, flash
 from dotenv import load_dotenv
-from psycopg2.extras import RealDictCursor
-from urllib.parse import urlparse
-import validators
-from bs4 import BeautifulSoup
 from datetime import datetime
+from page_analyzer.db import connect_db, commit, close, insert_url, \
+    get_url, get_urls, insert_url_check, get_url_checks
+from page_analyzer.html_parser import parse_html
+from page_analyzer.url_utils import normalize_url, validate_url
 
 load_dotenv()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
-DATABASE_URL = os.getenv('DATABASE_URL')
-
-
-def get_db_connection():
-    try:
-        conn = psycopg2.connect(
-            DATABASE_URL, sslmode='prefer', cursor_factory=RealDictCursor
-        )
-        return conn
-    except Exception as e:
-        raise e
+app.config['DATABASE_URL'] = os.getenv('DATABASE_URL')
 
 
 @app.template_filter('datetime')
@@ -40,123 +30,69 @@ def index():
 
 @app.route('/list_urls', methods=['GET', 'POST'])
 def list_urls():
-    conn = get_db_connection()
+    conn = connect_db(app)
     if request.method == 'POST':
         url = request.form['url']
-        if not validators.url(url):
+        if not validate_url(url):
             flash('Некорректный URL!', 'danger')
             return redirect(url_for('index'))
 
-        parsed_url = urlparse(url)
-        if not parsed_url.scheme or not parsed_url.netloc:
-            flash('Некорректный URL!', 'danger')
-            return redirect(url_for('index'))
-
-        cursor = conn.cursor()
+        url = normalize_url(url)
         try:
-            cursor.execute(
-                "INSERT INTO urls (name) VALUES (%s) RETURNING id;", (url,)
-            )
-            url_id = cursor.fetchone()['id']
-            conn.commit()
+            url_id = insert_url(conn, url)
+            commit(conn)
             flash('URL успешно добавлен!', 'success')
         except psycopg2.IntegrityError:
             conn.rollback()
+            cursor = conn.cursor()
             cursor.execute("SELECT id FROM urls WHERE name = %s;", (url,))
-            url_id = cursor.fetchone()['id']
+            url_id = cursor.fetchone()[0]
+            cursor.close()
             flash('Страница уже существует', 'info')
         finally:
-            cursor.close()
+            close(conn)
         return redirect(url_for('view_url', id=url_id))
 
-    cursor = conn.cursor()
-    cursor.execute(
-        """
-        SELECT urls.id, urls.name,
-               MAX(url_checks.created_at) AS last_check_date,
-               url_checks.status_code
-        FROM urls
-        LEFT JOIN url_checks ON urls.id = url_checks.url_id
-        GROUP BY urls.id, url_checks.status_code
-        ORDER BY urls.created_at DESC;
-        """
-    )
-    urls = cursor.fetchall()
-    cursor.close()
-    conn.close()
+    urls = get_urls(conn)
+    close(conn)
     return render_template('list_urls.html', urls=urls)
 
 
 @app.route('/urls/<int:id>/checks', methods=['POST'])
 def check_url(id):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT name FROM urls WHERE id = %s;", (id,))
-    url = cursor.fetchone()
-
+    conn = connect_db(app)
+    url = get_url(conn, id)
     if url is None:
         flash('URL не найден!', 'danger')
+        close(conn)
         return redirect(url_for('list_urls'))
 
     try:
-        response = requests.get(url['name'])
+        response = requests.get(url.name)
         response.raise_for_status()
         status_code = response.status_code
-
-        soup = BeautifulSoup(response.text, 'html.parser')
-        h1 = soup.find('h1').text if soup.find('h1') else None
-        title = soup.title.string if soup.title else None
-        description = None
-        if soup.find('meta', attrs={'name': 'description'}):
-            description = soup.find(
-                'meta', attrs={'name': 'description'}
-            )['content']
-
+        parsed_content = parse_html(response.text)
     except requests.RequestException:
         flash('Произошла ошибка при проверке', 'danger')
+        close(conn)
         return redirect(url_for('view_url', id=id))
 
-    cursor.execute(
-        """
-        INSERT INTO url_checks (
-            url_id, status_code, h1, title, description, created_at
-        ) VALUES (%s, %s, %s, %s, %s, CURRENT_DATE)
-        RETURNING id;
-        """,
-        (id, status_code, h1, title, description)
+    insert_url_check(
+        conn, id, status_code, parsed_content['h1'],
+        parsed_content['title'], parsed_content['description']
     )
-    conn.commit()
-    cursor.close()
-    conn.close()
+    commit(conn)
+    close(conn)
     flash('Проверка успешно запущена!', 'success')
     return redirect(url_for('view_url', id=id))
 
 
 @app.route('/view_url/<int:id>')
 def view_url(id):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute(
-        """
-        SELECT id, name, created_at
-        FROM urls WHERE id = %s;
-        """,
-        (id,)
-    )
-    url = cursor.fetchone()
-    cursor.execute(
-        """
-        SELECT id, status_code, h1, title, description,
-               created_at
-        FROM url_checks
-        WHERE url_id = %s
-        ORDER BY created_at DESC;
-        """,
-        (id,)
-    )
-    checks = cursor.fetchall()
-    cursor.close()
-    conn.close()
+    conn = connect_db(app)
+    url = get_url(conn, id)
+    checks = get_url_checks(conn, id)
+    close(conn)
     if url is None:
         flash('URL не найден!', 'danger')
         return redirect(url_for('list_urls'))
