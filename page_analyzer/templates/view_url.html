@@ -41,7 +41,7 @@
                 <td>{{ check.h1 }}</td>
                 <td>{{ check.title }}</td>
                 <td>{{ check.description }}</td>
-                <td>{{ check.created_at }}</td>
+                <td>{{ check.created_at|datetime }}</td>
             </tr>
         {% endfor %}
     </tbody>
