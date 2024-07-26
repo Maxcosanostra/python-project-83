@@ -3,7 +3,6 @@ import requests
 import psycopg2
 from flask import Flask, render_template, request, redirect, url_for, flash
 from dotenv import load_dotenv
-from datetime import datetime
 from page_analyzer.db import connect_db, commit, close, insert_url, \
     get_url, get_urls, insert_url_check, get_url_checks
 from page_analyzer.html_parser import parse_html
