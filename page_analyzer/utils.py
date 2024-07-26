@@ -9,3 +9,9 @@ def normalize_url(input_url):
 
 def validate_url(input_url):
     return validators.url(input_url)
+
+
+def format_date(value, format='%Y-%m-%d'):
+    if value is None:
+        return ""
+    return value.strftime(format)

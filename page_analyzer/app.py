@@ -7,20 +7,18 @@ from datetime import datetime
 from page_analyzer.db import connect_db, commit, close, insert_url, \
     get_url, get_urls, insert_url_check, get_url_checks
 from page_analyzer.html_parser import parse_html
-from page_analyzer.url_utils import normalize_url, validate_url
+from page_analyzer.utils import normalize_url, validate_url, format_date
+
 
 load_dotenv()
+
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 app.config['DATABASE_URL'] = os.getenv('DATABASE_URL')
 
 
-@app.template_filter('datetime')
-def datetime_filter(value):
-    if isinstance(value, datetime):
-        return value.strftime('%Y-%m-%d %H:%M:%S')
-    return value
+app.jinja_env.filters['datetime'] = format_date
 
 
 @app.route('/')
