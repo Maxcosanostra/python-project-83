@@ -3,10 +3,11 @@ import requests
 import psycopg2
 from flask import Flask, render_template, request, redirect, url_for, flash
 from dotenv import load_dotenv
-from page_analyzer.db import open_db_connection, close_db_connection, get_url_by_id, fetch_and_parse_url, insert_url_check, check_url_exists, insert_new_url, get_all_urls, get_url_details
-import validators
 from datetime import datetime
-from page_analyzer.utils import format_date, normalize_url
+from page_analyzer.db import connect_db, commit, close, insert_url, \
+    get_url, get_urls, insert_url_check, get_url_checks
+from page_analyzer.html_parser import parse_html
+from page_analyzer.utils import normalize_url, validate_url, format_date
 
 
 load_dotenv()
@@ -27,69 +28,70 @@ def index():
 
 @app.route('/list_urls', methods=['GET', 'POST'])
 def list_urls():
-    conn, cur = open_db_connection()
+    conn = connect_db(app)
     if request.method == 'POST':
         url = request.form['url']
-        if not validators.url(url):
+        if not validate_url(url):
             flash('Некорректный URL!', 'danger')
             return redirect(url_for('index'))
 
         url = normalize_url(url)
         try:
-            existing_url = check_url_exists(cur, url)
-            if existing_url:
-                flash('Страница уже существует', 'info')
-                redirect_url = redirect(url_for('view_url', id=existing_url['id']))
-            else:
-                url_id = insert_new_url(cur, url)
-                conn.commit()
-                flash('URL успешно добавлен!', 'success')
-                redirect_url = redirect(url_for('view_url', id=url_id))
-        except Exception as e:
+            url_id = insert_url(conn, url)
+            commit(conn)
+            flash('URL успешно добавлен!', 'success')
+        except psycopg2.IntegrityError:
             conn.rollback()
-            flash(f'Произошла ошибка при добавлении URL: {e}', 'danger')
-            redirect_url = render_template('index.html'), 422
+            cursor = conn.cursor()
+            cursor.execute("SELECT id FROM urls WHERE name = %s;", (url,))
+            url_id = cursor.fetchone()[0]
+            cursor.close()
+            flash('Страница уже существует', 'info')
         finally:
-            close_db_connection(conn, cur)
-        return redirect_url
+            close(conn)
+        return redirect(url_for('view_url', id=url_id))
 
-    urls = get_all_urls()
-    close_db_connection(conn, cur)
+    urls = get_urls(conn)
+    close(conn)
     return render_template('list_urls.html', urls=urls)
 
 
 @app.route('/urls/<int:id>/checks', methods=['POST'])
 def check_url(id):
-    conn, cur = open_db_connection()
-    url = get_url_by_id(conn, id)
-    if not url:
+    conn = connect_db(app)
+    url = get_url(conn, id)
+    if url is None:
         flash('URL не найден!', 'danger')
-        close_db_connection(conn, cur)
+        close(conn)
         return redirect(url_for('list_urls'))
 
     try:
-        response = requests.get(url)
+        response = requests.get(url.name)
         response.raise_for_status()
         status_code = response.status_code
-        parsed_content = fetch_and_parse_url(response.text)
+        parsed_content = parse_html(response.text)
     except requests.RequestException:
         flash('Произошла ошибка при проверке', 'danger')
-        close_db_connection(conn, cur)
+        close(conn)
         return redirect(url_for('view_url', id=id))
 
-    insert_url_check(conn, id, parsed_content)
-    conn.commit()
-    close_db_connection(conn, cur)
+    insert_url_check(
+        conn, id, status_code, parsed_content['h1'],
+        parsed_content['title'], parsed_content['description']
+    )
+    commit(conn)
+    close(conn)
     flash('Проверка успешно запущена!', 'success')
     return redirect(url_for('view_url', id=id))
 
 
 @app.route('/view_url/<int:id>')
 def view_url(id):
-    conn, cur = open_db_connection()
-    url, checks = get_url_details(id)
-    close_db_connection(conn, cur)
-    if not url:
+    conn = connect_db(app)
+    url = get_url(conn, id)
+    checks = get_url_checks(conn, id)
+    close(conn)
+    if url is None:
         flash('URL не найден!', 'danger')
         return redirect(url_for('list_urls'))
     return render_template('view_url.html', url=url, checks=checks)
