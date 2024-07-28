@@ -16,13 +16,15 @@ load_dotenv()
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 app.config['DATABASE_URL'] = os.getenv('DATABASE_URL')
-
-
 app.jinja_env.filters['datetime'] = format_date
+
+
+logging.basicConfig(level=logging.INFO)
 
 
 @app.route('/')
 def index():
+    current_app.logger.info("Index page accessed")
     return render_template('index.html')
 
 
@@ -41,6 +43,7 @@ def list_urls():
             url_id = insert_url(conn, url)
             commit(conn)
             flash('URL успешно добавлен!', 'success')
+            current_app.logger.info(f"URL inserted: {url}")
         except psycopg2.IntegrityError:
             conn.rollback()
             cursor = conn.cursor()
@@ -48,6 +51,7 @@ def list_urls():
             url_id = cursor.fetchone()[0]
             cursor.close()
             flash('Страница уже существует', 'info')
+            current_app.logger.info(f"URL already exists: {url}")
         finally:
             close(conn)
         return redirect(url_for('view_url', id=url_id))
@@ -55,10 +59,6 @@ def list_urls():
     urls = get_urls(conn)
     close(conn)
     return render_template('list_urls.html', urls=urls)
-
-if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO)
-    app.run()
 
 
 @app.route('/urls/<int:id>/checks', methods=['POST'])
@@ -80,10 +80,7 @@ def check_url(id):
         close(conn)
         return redirect(url_for('view_url', id=id))
 
-    insert_url_check(
-        conn, id, status_code, parsed_content['h1'],
-        parsed_content['title'], parsed_content['description']
-    )
+    insert_url_check(conn, id, status_code, parsed_content['h1'], parsed_content['title'], parsed_content['description'])
     commit(conn)
     close(conn)
     flash('Проверка успешно запущена!', 'success')
