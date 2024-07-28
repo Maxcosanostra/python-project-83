@@ -6,7 +6,7 @@
 <div class="container text-center mt-5">
     <h1>Анализатор страниц</h1>
     <p>Бесплатно проверяйте сайты на SEO-пригодность</p>
-    <form class="d-flex justify-content-center" action="{{ url_for('list_urls') }}" method="post">
+    <form class="d-flex justify-content-center" action="{{ url_for('list_urls') }}" method="post" data-test="url-form">
         <input type="text" class="form-control w-50 me-2" name="url" placeholder="https://www.example.com" data-test="url-input">
         <button class="btn btn-primary" type="submit" data-test="submit-button">Проверить</button>
     </form>
