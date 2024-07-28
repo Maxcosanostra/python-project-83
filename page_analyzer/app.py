@@ -35,6 +35,7 @@ def list_urls():
         url = request.form['url']
         current_app.logger.info(f"Received URL: {url}")
         if not validate_url(url):
+            current_app.logger.info(f"Invalid URL: {url}")
             flash('Некорректный URL!', 'danger')
             return redirect(url_for('index'))
 
@@ -66,6 +67,7 @@ def check_url(id):
     conn = connect_db(app)
     url = get_url(conn, id)
     if url is None:
+        current_app.logger.info(f"URL not found: {id}")
         flash('URL не найден!', 'danger')
         close(conn)
         return redirect(url_for('list_urls'))
@@ -75,7 +77,9 @@ def check_url(id):
         response.raise_for_status()
         status_code = response.status_code
         parsed_content = parse_html(response.text)
-    except requests.RequestException:
+        current_app.logger.info(f"URL checked: {url.name} with status {status_code}")
+    except requests.RequestException as e:
+        current_app.logger.error(f"Error checking URL {url.name}: {e}")
         flash('Произошла ошибка при проверке', 'danger')
         close(conn)
         return redirect(url_for('view_url', id=id))
@@ -94,6 +98,7 @@ def view_url(id):
     checks = get_url_checks(conn, id)
     close(conn)
     if url is None:
+        current_app.logger.info(f"URL not found: {id}")
         flash('URL не найден!', 'danger')
         return redirect(url_for('list_urls'))
     return render_template('view_url.html', url=url, checks=checks)
@@ -101,11 +106,13 @@ def view_url(id):
 
 @app.errorhandler(500)
 def internal_error(error):
+    current_app.logger.error(f"Server Error: {error}")
     return "Internal Server Error", 500
 
 
 @app.errorhandler(Exception)
 def unhandled_exception(e):
+    current_app.logger.error(f"Unhandled Exception: {e}")
     return "Internal Server Error", 500
 
 
