@@ -1,7 +1,8 @@
 import os
 import requests
 import psycopg2
-from flask import Flask, render_template, request, redirect, url_for, flash
+import logging
+from flask import Flask, render_template, request, redirect, url_for, flash, current_app
 from dotenv import load_dotenv
 from page_analyzer.db import connect_db, commit, close, insert_url, \
     get_url, get_urls, insert_url_check, get_url_checks
@@ -30,6 +31,7 @@ def list_urls():
     conn = connect_db(app)
     if request.method == 'POST':
         url = request.form['url']
+        current_app.logger.info(f"Received URL: {url}")
         if not validate_url(url):
             flash('Некорректный URL!', 'danger')
             return redirect(url_for('index'))
@@ -53,6 +55,10 @@ def list_urls():
     urls = get_urls(conn)
     close(conn)
     return render_template('list_urls.html', urls=urls)
+
+if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
+    app.run()
 
 
 @app.route('/urls/<int:id>/checks', methods=['POST'])
