@@ -39,7 +39,7 @@ def list_urls():
             url_id = insert_url(conn, url)
             commit(conn)
             flash('Страница успешно добавлена', 'alert-success')
-            return redirect(url_for('view_url', id=url_id))
+            return redirect(url_for('url_details', id=url_id))
         except psycopg2.IntegrityError:
             conn.rollback()
             cursor = conn.cursor()
@@ -47,10 +47,10 @@ def list_urls():
             url_id = cursor.fetchone()[0]
             cursor.close()
             flash('Страница уже существует', 'alert-info')
-            return redirect(url_for('view_url', id=url_id))
+            return redirect(url_for('url_details', id=url_id))
         finally:
             close(conn)
-        return redirect(url_for('view_url', id=url_id))
+        return redirect(url_for('url_details', id=url_id))
 
     urls = get_urls(conn)
     close(conn)
@@ -74,7 +74,7 @@ def check_url(id):
     except requests.RequestException:
         flash('Произошла ошибка при проверке', 'alert-danger')
         close(conn)
-        return redirect(url_for('view_url', id=id))
+        return redirect(url_for('url_details', id=id))
 
     insert_url_check(
         conn, id, status_code, parsed_content['h1'],
@@ -83,17 +83,17 @@ def check_url(id):
     commit(conn)
     close(conn)
     flash('Страница успешно проверена', 'alert-success')
-    return redirect(url_for('view_url', id=id))
+    return redirect(url_for('url_details', id=id))
 
 
-@app.route('/view_url/<int:id>')
-def view_url(id):
+@app.route('/urls/<int:id>')
+def url_details(id):
     conn = connect_db(app)
     url = get_url(conn, id)
     checks = get_url_checks(conn, id)
     close(conn)
     if url is None:
-        flash('URL не найден!', 'danger')
+        flash('URL не найден!', 'alert-danger')
         return redirect(url_for('list_urls'))
     return render_template('view_url.html', url=url, checks=checks)
 
