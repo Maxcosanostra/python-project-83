@@ -8,7 +8,7 @@
     <p>Бесплатно проверяйте сайты на SEO-пригодность</p>
     <form class="d-flex justify-content-center" action="{{ url_for('list_urls') }}" method="post">
         <input type="text" class="form-control w-50 me-2" name="url" placeholder="https://www.example.com">
-        <button class="btn btn-primary" type="submit">Проверить</button>
+        <input type="submit" class="btn btn-primary btn-lg ms-3 px-5 text-uppercase mx-3" value="Проверить">
     </form>
 </div>
 {% endblock %}
