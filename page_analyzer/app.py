@@ -80,7 +80,7 @@ def check_url(id):
     )
     commit(conn)
     close(conn)
-    flash('Проверка успешно запущена!', 'success')
+    flash('Страница успешно проверена', 'success')
     return redirect(url_for('view_url', id=id))
 
 
