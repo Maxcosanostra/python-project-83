@@ -32,6 +32,7 @@ def list_urls():
         url = request.form['url']
         if not validate_url(url):
             flash('Некорректный URL!', 'danger')
+            print("Flash message: Некорректный URL!")
             return redirect(url_for('index'))
 
         url = normalize_url(url)
@@ -39,6 +40,7 @@ def list_urls():
             url_id = insert_url(conn, url)
             commit(conn)
             flash('Страница успешно добавлена', 'success')
+            print("Flash message: Страница успешно добавлена")
         except psycopg2.IntegrityError:
             conn.rollback()
             cursor = conn.cursor()
@@ -46,8 +48,10 @@ def list_urls():
             url_id = cursor.fetchone()[0]
             cursor.close()
             flash('Страница уже существует', 'info')
+            print("Flash message: Страница уже существует")
         finally:
             close(conn)
+        print(f"Redirecting to /view_url/{url_id}")
         return redirect(url_for('view_url', id=url_id))
 
     urls = get_urls(conn)
@@ -61,6 +65,7 @@ def check_url(id):
     url = get_url(conn, id)
     if url is None:
         flash('URL не найден!', 'danger')
+        print("Flash message: URL не найден!")
         close(conn)
         return redirect(url_for('list_urls'))
 
@@ -71,6 +76,7 @@ def check_url(id):
         parsed_content = parse_html(response.text)
     except requests.RequestException:
         flash('Произошла ошибка при проверке', 'danger')
+        print("Flash message: Произошла ошибка при проверке")
         close(conn)
         return redirect(url_for('view_url', id=id))
 
@@ -81,6 +87,8 @@ def check_url(id):
     commit(conn)
     close(conn)
     flash('Страница успешно проверена', 'success')
+    print("Flash message: Страница успешно проверена")
+    print(f"Redirecting to /view_url/{id}")
     return redirect(url_for('view_url', id=id))
 
 
