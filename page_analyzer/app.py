@@ -31,21 +31,23 @@ def list_urls():
     if request.method == 'POST':
         url = request.form['url']
         if not validate_url(url):
-            flash('Некорректный URL!', 'alert-danger')
+            flash('Некорректный URL!', 'danger')
             return redirect(url_for('index'))
 
         url = normalize_url(url)
         try:
             url_id = insert_url(conn, url)
             commit(conn)
-            flash('Страница успешно добавлена', 'alert-success')
+            flash('Страница успешно добавлена', 'success')
+            return redirect(url_for('view_url', id=url_id))
         except psycopg2.IntegrityError:
             conn.rollback()
             cursor = conn.cursor()
             cursor.execute("SELECT id FROM urls WHERE name = %s;", (url,))
             url_id = cursor.fetchone()[0]
             cursor.close()
-            flash('Страница уже существует', 'alert-info')
+            flash('Страница уже существует', 'info')
+            return redirect(url_for('view_url', id=url_id))
         finally:
             close(conn)
         return redirect(url_for('view_url', id=url_id))
@@ -60,7 +62,7 @@ def check_url(id):
     conn = connect_db(app)
     url = get_url(conn, id)
     if url is None:
-        flash('URL не найден!', 'alert-danger')
+        flash('URL не найден!', 'danger')
         close(conn)
         return redirect(url_for('list_urls'))
 
@@ -70,7 +72,7 @@ def check_url(id):
         status_code = response.status_code
         parsed_content = parse_html(response.text)
     except requests.RequestException:
-        flash('Произошла ошибка при проверке', 'alert-danger')
+        flash('Произошла ошибка при проверке', 'danger')
         close(conn)
         return redirect(url_for('view_url', id=id))
 
@@ -80,7 +82,7 @@ def check_url(id):
     )
     commit(conn)
     close(conn)
-    flash('Страница успешно проверена', 'alert-success')
+    flash('Страница успешно проверена', 'success')
     return redirect(url_for('view_url', id=id))
 
 
@@ -91,7 +93,7 @@ def view_url(id):
     checks = get_url_checks(conn, id)
     close(conn)
     if url is None:
-        flash('URL не найден!', 'alert-danger')
+        flash('URL не найден!', 'danger')
         return redirect(url_for('list_urls'))
     return render_template('view_url.html', url=url, checks=checks)
 
