@@ -32,7 +32,8 @@ def urls():
         url = request.form['url']
         if not validate_url(url):
             flash('Некорректный URL!', 'alert-danger')
-            return redirect(url_for('index'))
+            close(conn)
+            return render_template('index.html'), 422
 
         url = normalize_url(url)
         try:
