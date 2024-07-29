@@ -1,8 +1,7 @@
 import os
 import requests
 import psycopg2
-import logging
-from flask import Flask, render_template, request, redirect, url_for, flash, current_app
+from flask import Flask, render_template, request, redirect, url_for, flash
 from dotenv import load_dotenv
 from page_analyzer.db import connect_db, commit, close, insert_url, \
     get_url, get_urls, insert_url_check, get_url_checks
@@ -16,15 +15,13 @@ load_dotenv()
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 app.config['DATABASE_URL'] = os.getenv('DATABASE_URL')
+
+
 app.jinja_env.filters['datetime'] = format_date
-
-
-logging.basicConfig(level=logging.INFO)
 
 
 @app.route('/')
 def index():
-    current_app.logger.info("Index page accessed")
     return render_template('index.html')
 
 
@@ -33,9 +30,7 @@ def list_urls():
     conn = connect_db(app)
     if request.method == 'POST':
         url = request.form['url']
-        current_app.logger.info(f"Received URL: {url}")
         if not validate_url(url):
-            current_app.logger.info(f"Invalid URL: {url}")
             flash('Некорректный URL!', 'danger')
             return redirect(url_for('index'))
 
@@ -44,7 +39,6 @@ def list_urls():
             url_id = insert_url(conn, url)
             commit(conn)
             flash('URL успешно добавлен!', 'success')
-            current_app.logger.info(f"URL inserted: {url}")
         except psycopg2.IntegrityError:
             conn.rollback()
             cursor = conn.cursor()
@@ -52,7 +46,6 @@ def list_urls():
             url_id = cursor.fetchone()[0]
             cursor.close()
             flash('Страница уже существует', 'info')
-            current_app.logger.info(f"URL already exists: {url}")
         finally:
             close(conn)
         return redirect(url_for('view_url', id=url_id))
@@ -67,7 +60,6 @@ def check_url(id):
     conn = connect_db(app)
     url = get_url(conn, id)
     if url is None:
-        current_app.logger.info(f"URL not found: {id}")
         flash('URL не найден!', 'danger')
         close(conn)
         return redirect(url_for('list_urls'))
@@ -77,14 +69,15 @@ def check_url(id):
         response.raise_for_status()
         status_code = response.status_code
         parsed_content = parse_html(response.text)
-        current_app.logger.info(f"URL checked: {url.name} with status {status_code}")
-    except requests.RequestException as e:
-        current_app.logger.error(f"Error checking URL {url.name}: {e}")
+    except requests.RequestException:
         flash('Произошла ошибка при проверке', 'danger')
         close(conn)
         return redirect(url_for('view_url', id=id))
 
-    insert_url_check(conn, id, status_code, parsed_content['h1'], parsed_content['title'], parsed_content['description'])
+    insert_url_check(
+        conn, id, status_code, parsed_content['h1'],
+        parsed_content['title'], parsed_content['description']
+    )
     commit(conn)
     close(conn)
     flash('Проверка успешно запущена!', 'success')
@@ -98,7 +91,6 @@ def view_url(id):
     checks = get_url_checks(conn, id)
     close(conn)
     if url is None:
-        current_app.logger.info(f"URL not found: {id}")
         flash('URL не найден!', 'danger')
         return redirect(url_for('list_urls'))
     return render_template('view_url.html', url=url, checks=checks)
@@ -106,13 +98,11 @@ def view_url(id):
 
 @app.errorhandler(500)
 def internal_error(error):
-    current_app.logger.error(f"Server Error: {error}")
     return "Internal Server Error", 500
 
 
 @app.errorhandler(Exception)
 def unhandled_exception(e):
-    current_app.logger.error(f"Unhandled Exception: {e}")
     return "Internal Server Error", 500
 
 
