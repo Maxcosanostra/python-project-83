@@ -38,7 +38,7 @@ def list_urls():
         try:
             url_id = insert_url(conn, url)
             commit(conn)
-            flash('URL успешно добавлен!', 'success')
+            flash('Страница успешно добавлена', 'success')
         except psycopg2.IntegrityError:
             conn.rollback()
             cursor = conn.cursor()
