@@ -12,20 +12,20 @@
             <a class="navbar-brand" href="/">Анализатор страниц</a>
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                 <li class="nav-item">
-                    <a class="nav-link active" href="/list_urls">Сайты</a>
+                    <a class="nav-link" href="{{ url_for('urls') }}">Сайты</a>
                 </li>
             </ul>
         </div>
     </nav>
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert {{ category }}" role="alert">
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert {{ category }}" role="alert">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
     <div class="container mt-5">
         {% block content %}{% endblock %}
     </div>

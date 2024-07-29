@@ -25,8 +25,8 @@ def index():
     return render_template('index.html')
 
 
-@app.route('/list_urls', methods=['GET', 'POST'])
-def list_urls():
+@app.route('/urls', methods=['GET', 'POST'])
+def urls():
     conn = connect_db(app)
     if request.method == 'POST':
         url = request.form['url']
@@ -64,7 +64,7 @@ def check_url(id):
     if url is None:
         flash('URL не найден!', 'alert-danger')
         close(conn)
-        return redirect(url_for('list_urls'))
+        return redirect(url_for('urls'))
 
     try:
         response = requests.get(url.name)
@@ -94,7 +94,7 @@ def url_details(id):
     close(conn)
     if url is None:
         flash('URL не найден!', 'alert-danger')
-        return redirect(url_for('list_urls'))
+        return redirect(url_for('urls'))
     return render_template('view_url.html', url=url, checks=checks)
 
 
