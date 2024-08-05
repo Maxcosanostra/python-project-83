@@ -3,6 +3,8 @@
 ### Hexlet tests and linter status:
 [![Actions Status](https://github.com/Maxcosanostra/python-project-83/actions/workflows/hexlet-check.yml/badge.svg)](https://github.com/Maxcosanostra/python-project-83/actions)
 
+[![Maintainability](https://api.codeclimate.com/v1/badges/1e01adc153c0c40755c1/maintainability)](https://codeclimate.com/github/Maxcosanostra/python-project-83/maintainability)
+
 Ссылка на домен:
 https://python-project-83-gidc.onrender.com/
 
