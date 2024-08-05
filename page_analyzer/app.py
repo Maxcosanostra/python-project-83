@@ -1,12 +1,10 @@
 import os
 import requests
-import psycopg2
 from flask import Flask, render_template, request, redirect, url_for, flash
 from dotenv import load_dotenv
-from page_analyzer.db import connect_db, commit, close, insert_url, \
-    get_url, get_urls, insert_url_check, get_url_checks
+from page_analyzer import db
 from page_analyzer.html_parser import parse_html
-from page_analyzer.utils import normalize_url, validate_url, format_date
+from page_analyzer.utils import normalize_url, validate_url
 
 
 load_dotenv()
@@ -17,86 +15,82 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 app.config['DATABASE_URL'] = os.getenv('DATABASE_URL')
 
 
-app.jinja_env.filters['datetime'] = format_date
-
-
-@app.route('/')
+@app.get('/')
 def index():
     return render_template('index.html')
 
 
-@app.route('/urls', methods=['GET', 'POST'])
-def urls():
-    conn = connect_db(app)
-    if request.method == 'POST':
-        url = request.form['url']
-        if not validate_url(url):
-            flash('Некорректный URL!', 'alert-danger')
-            close(conn)
-            return render_template('index.html'), 422
-
-        url = normalize_url(url)
-        try:
-            url_id = insert_url(conn, url)
-            commit(conn)
-            flash('Страница успешно добавлена', 'alert-success')
-            return redirect(url_for('url_details', id=url_id))
-        except psycopg2.IntegrityError:
-            conn.rollback()
-            cursor = conn.cursor()
-            cursor.execute("SELECT id FROM urls WHERE name = %s;", (url,))
-            url_id = cursor.fetchone()[0]
-            cursor.close()
-            flash('Страница уже существует', 'alert-info')
-            return redirect(url_for('url_details', id=url_id))
-        finally:
-            close(conn)
-        return redirect(url_for('url_details', id=url_id))
-
-    urls = get_urls(conn)
-    close(conn)
+@app.get('/urls')
+def list_urls():
+    conn = db.connect_db(app)
+    urls = db.get_urls(conn)
+    db.close(conn)
     return render_template('list_urls.html', urls=urls)
 
 
-@app.route('/urls/<int:id>/checks', methods=['POST'])
-def check_url(id):
-    conn = connect_db(app)
-    url = get_url(conn, id)
-    if url is None:
-        flash('URL не найден!', 'alert-danger')
-        close(conn)
-        return redirect(url_for('urls'))
+@app.post('/urls')
+def add_url():
+    url = request.form['url']
+    error_msg = validate_url(url)
+    if error_msg:
+        flash(error_msg, 'danger')
+        return render_template('index.html', url=url), 422
 
+    conn = db.connect_db(app)
+    normalized_url = normalize_url(url)
+    existed_url = db.get_url_by_name(conn, normalized_url)
+
+    if existed_url:
+        flash('Страница уже существует', 'info')
+        url_id = existed_url.id
+    else:
+        url_id = db.insert_url(conn, normalized_url)
+        db.commit(conn)
+        flash('Страница успешно добавлена', 'success')
+
+    db.close(conn)
+    return redirect(url_for('url_details', id=url_id))
+
+
+@app.post('/urls/<int:id>/checks')
+def check_url(id):
+    return validate_url_check(id)
+
+
+@app.get('/urls/<int:id>')
+def url_details(id):
+    conn = db.connect_db(app)
+    url = db.get_url(conn, id)
+    checks = db.get_url_checks(conn, id)
+    db.close(conn)
+    return render_template('view_url.html', url=url, checks=checks)
+
+
+def validate_url_check(url_id):
+    conn = db.connect_db(app)
+    url = db.get_url(conn, url_id)
     try:
         response = requests.get(url.name)
         response.raise_for_status()
-        status_code = response.status_code
-        parsed_content = parse_html(response.text)
     except requests.RequestException:
-        flash('Произошла ошибка при проверке', 'alert-danger')
-        close(conn)
-        return redirect(url_for('url_details', id=id))
+        flash('Произошла ошибка при проверке', 'danger')
+        return redirect(url_for('url_details', id=url_id))
 
-    insert_url_check(
-        conn, id, status_code, parsed_content['h1'],
-        parsed_content['title'], parsed_content['description']
-    )
-    commit(conn)
-    close(conn)
-    flash('Страница успешно проверена', 'alert-success')
-    return redirect(url_for('url_details', id=id))
+    page_data = parse_page_content(response)
+    db.insert_url_check(conn, url_id, page_data)
+    db.commit(conn)
+    db.close(conn)
+    flash('Страница успешно проверена', 'success')
+    return redirect(url_for('url_details', id=url_id))
 
-
-@app.route('/urls/<int:id>')
-def url_details(id):
-    conn = connect_db(app)
-    url = get_url(conn, id)
-    checks = get_url_checks(conn, id)
-    close(conn)
-    if url is None:
-        flash('URL не найден!', 'alert-danger')
-        return redirect(url_for('urls'))
-    return render_template('view_url.html', url=url, checks=checks)
+def parse_page_content(response):
+    parsed_content = parse_html(response.text)
+    return {
+        'status_code': response.status_code,
+        'h1': parsed_content['h1'],
+        'title': parsed_content['title'],
+        'description': parsed_content['description'],
+    }
 
 
 @app.errorhandler(500)

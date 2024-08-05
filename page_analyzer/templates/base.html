@@ -12,7 +12,7 @@
             <a class="navbar-brand" href="/">Анализатор страниц</a>
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('urls') }}">Сайты</a>
+                    <a class="nav-link" href="{{ url_for('list_urls') }}">Сайты</a>
                 </li>
             </ul>
         </div>
@@ -20,7 +20,7 @@
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
-                <div class="alert {{ category }}" role="alert">
+                <div class="alert alert-{{ category }} mb-0 rounded-0" role="alert">
                     {{ message }}
                 </div>
             {% endfor %}

@@ -24,6 +24,15 @@ def insert_url(conn, url):
         return curs.fetchone().id
 
 
+def get_url_by_name(conn, name):
+    with conn.cursor(cursor_factory=NamedTupleCursor) as curs:
+        curs.execute(
+            'SELECT * FROM urls WHERE name = %s;',
+            (name,)
+        )
+        return curs.fetchone()
+
+
 def get_url(conn, url_id):
     with conn.cursor(cursor_factory=NamedTupleCursor) as curs:
         curs.execute(
@@ -49,7 +58,7 @@ def get_urls(conn):
         return curs.fetchall()
 
 
-def insert_url_check(conn, url_id, status_code, h1, title, description):
+def insert_url_check(conn, url_id, page_data):
     with conn.cursor(cursor_factory=NamedTupleCursor) as curs:
         curs.execute(
             """
@@ -58,7 +67,7 @@ def insert_url_check(conn, url_id, status_code, h1, title, description):
             ) VALUES (%s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
             RETURNING id;
             """,
-            (url_id, status_code, h1, title, description)
+            (url_id, page_data['status_code'], page_data['h1'], page_data['title'], page_data['description'])
         )
         return curs.fetchone().id
 

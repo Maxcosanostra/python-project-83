@@ -18,7 +18,7 @@
             <tr>
                 <td>{{ url.id }}</td>
                 <td><a href="{{ url_for('url_details', id=url.id) }}">{{ url.name }}</a></td>
-                <td>{{ url.last_check_date|datetime }}</td>
+                <td>{{ url.last_check_date.strftime('%Y-%m-%d %H:%M:%S') if url.last_check_date else 'Н/Д' }}</td>
                 <td>{{ url.status_code }}</td>
             </tr>
         {% endfor %}

@@ -1,5 +1,5 @@
-from urllib.parse import urlparse
 import validators
+from urllib.parse import urlparse
 
 
 def normalize_url(input_url):
@@ -8,10 +8,10 @@ def normalize_url(input_url):
 
 
 def validate_url(input_url):
-    return validators.url(input_url)
-
-
-def format_date(value, format='%Y-%m-%d %H:%M:%S'):
-    if value is None:
-        return ""
-    return value.strftime(format)
+    if not input_url:
+        return 'URL обязателен для заполнения'
+    if len(input_url) > 255:
+        return 'Введенный URL превышает длину в 255 символов'
+    if not validators.url(input_url):
+        return 'Некорректный URL'
+    return None
