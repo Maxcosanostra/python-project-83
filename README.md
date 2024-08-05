@@ -5,6 +5,8 @@
 
 [![Maintainability](https://api.codeclimate.com/v1/badges/1e01adc153c0c40755c1/maintainability)](https://codeclimate.com/github/Maxcosanostra/python-project-83/maintainability)
 
+[![CI](https://github.com/Maxcosanostra/python-project-83/actions/workflows/ci.yml/badge.svg)](https://github.com/Maxcosanostra/python-project-83/actions/workflows/ci.yml)
+
 Ссылка на домен:
 https://python-project-83-gidc.onrender.com/
 
