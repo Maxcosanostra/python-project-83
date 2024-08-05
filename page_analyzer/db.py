@@ -67,7 +67,13 @@ def insert_url_check(conn, url_id, page_data):
             ) VALUES (%s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
             RETURNING id;
             """,
-            (url_id, page_data['status_code'], page_data['h1'], page_data['title'], page_data['description'])
+            (
+                url_id,
+                page_data['status_code'],
+                page_data['h1'],
+                page_data['title'],
+                page_data['description']
+            )
         )
         return curs.fetchone().id
 

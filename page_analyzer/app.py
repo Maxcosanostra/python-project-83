@@ -83,6 +83,7 @@ def validate_url_check(url_id):
     flash('Страница успешно проверена', 'success')
     return redirect(url_for('url_details', id=url_id))
 
+
 def parse_page_content(response):
     parsed_content = parse_html(response.text)
     return {
