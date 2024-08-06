@@ -43,3 +43,38 @@ h1, title, и meta name="description" content="...". Правильно стру
 | [Gunicorn](https://gunicorn.org/) | WSGI HTTP-сервер для развертывания приложения в продакшене. |
 | [Bootstrap](https://getbootstrap.com/) | CSS-фреймворк для создания адаптивных веб-приложений в современном дизайне. |
 | [BeautifulSoup](https://pypi.org/project/beautifulsoup4/) | Библиотека для парсинга HTML и извлечения данных с веб-страниц. |
+
+---
+
+### Установка
+
+1. Склонируйте репозиторий по ссылке:
+   ```sh
+   git clone https://github.com/Maxcosanostra/python-project-83
+   ```
+
+2. Установите зависимости:
+   ```sh
+   make install
+   ```sh
+
+3. Создайте .env файл и настройте структуру, как показано в примере .env.example:
+   ```sh
+   SECRET_KEY=ваш_секретный_ключ
+   DATABASE_URL=postgresql://пользователь:пароль@localhost:5432/ваша_база_данных
+   ```sh
+
+4. Запустите приложение на локальном сервере:
+   ```sh
+   make dev
+   ```sh
+
+5. Запустите приложение на продакшн сервере:
+   ```sh
+   make start
+   ```
+---
+
+Проект выполнен благодаря прохождению практики в Hexlet.io под руководством Рафаэля Мухаметшина
+
+С Уважением, MaxCosaNostra
