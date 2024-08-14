@@ -19,7 +19,7 @@
     </tr>
 </table>
 <h2>Проверки</h2>
-<form action="{{ url_for('check_url', id=url.id) }}" method="post">
+<form action="{{ url_for('process_url_check', url_id=url.id) }}" method="post">
     <input type="submit" class="btn btn-primary btn-lg ms-3 px-5 text-uppercase mx-3" value="Запустить проверку">
 </form>
 <table class="table table-bordered mt-3" data-test="checks">
