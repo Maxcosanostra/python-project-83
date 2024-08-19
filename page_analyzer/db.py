@@ -47,7 +47,7 @@ def insert_url_check(conn, url_id, page_data):
             'INSERT INTO url_checks (url_id, status_code, h1, title, '
             'description) VALUES (%s, %s, %s, %s, %s);',
             (url_id, page_data['status_code'], page_data['h1'],
-             page_data['title'], page_data['description'])
+             page_data['title'], page_data['meta_description'])
         )
 
 

@@ -54,7 +54,7 @@ def show_url_page(url_id):
 
     url_checks = db.get_checks_by_url_id(conn, url_id)
     db.close(conn)
-    return render_template('view_url.html', url=url, checks=url_checks)
+    return render_template('urls/view_url.html', url=url, checks=url_checks)
 
 
 @app.get('/urls')
@@ -62,7 +62,7 @@ def show_urls_page():
     conn = db.connect_db(app)
     urls_data = db.get_urls_with_last_check_date_and_status_code(conn)
     db.close(conn)
-    return render_template('list_urls.html', urls=urls_data)
+    return render_template('urls/list_urls.html', urls=urls_data)
 
 
 @app.post('/urls/<int:url_id>/checks')
@@ -76,13 +76,7 @@ def process_url_check(url_id):
         flash('Произошла ошибка при проверке', 'danger')
         return redirect(url_for('show_url_page', url_id=url_id))
 
-    page_data = {
-        'status_code': response.status_code,
-        'h1': parse_html(response.text).get('h1'),
-        'title': parse_html(response.text).get('title'),
-        'description': parse_html(response.text).get('description'),
-    }
-
+    page_data = parse_html(response)
     db.insert_url_check(conn, url_id, page_data)
     db.commit(conn)
     db.close(conn)
@@ -92,9 +86,9 @@ def process_url_check(url_id):
 
 @app.errorhandler(500)
 def internal_error(error):
-    return "Internal Server Error", 500
+    return render_template('errors/500.html'), 500
 
 
 @app.errorhandler(404)
 def not_found_error(error):
-    return "Page Not Found", 404
+    return render_template('errors/404.html'), 404
